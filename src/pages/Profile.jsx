@@ -484,7 +484,6 @@ const Profile = () => {
                     {/* Security */}
                     <div className="bg-dark-300 rounded-lg p-6">
                       <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <IoShieldCheck />
                         Security
                       </h3>
                       <div className="space-y-4">
