@@ -1,61 +1,89 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
-// Create the context
-const AuthContext = createContext(null)
+const AuthContext = createContext();
 
-// Provider component that wraps the app
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  
-  // Simulate loading user from localStorage
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    // Check active sessions and sets the user
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setLoading(false);
+    };
+
+    getSession();
+
+    // Listen for changes on auth state (logged in, signed out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Login with email and password
+  const login = async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw error;
     }
-    setLoading(false)
-  }, [])
-  
-  // Simulate login
-  const login = () => {
-    // For demo purposes, create a mock user
-    const mockUser = {
-      id: '1',
-      name: 'Demo User',
-      email: 'demo@example.com'
+  };
+
+  // Signup with email and password
+  const signUp = async (email, password, name) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          }
+        }
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw error;
     }
-    
-    setUser(mockUser)
-    localStorage.setItem('user', JSON.stringify(mockUser))
-  }
-  
-  // Simulate logout
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('user')
-  }
-  
-  // Context value
+  };
+
+  // Logout
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const value = {
     user,
-    loading,
     login,
-    logout
-  }
-  
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
+    signUp,
+    logout,
+    loading,
+  };
 
-// Custom hook for using the auth context
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context
-}
+  return context;
+};

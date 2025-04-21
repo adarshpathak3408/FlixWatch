@@ -10,10 +10,7 @@ const TitleCards = ({ title, category }) => {
   const cardsRef = useRef()
   const navigate = useNavigate()
 
-  // Logic to determine if a movie is premium (vote_average >= 8)
-  const isPremiumMovie = (movie) => {
-    return movie.vote_average >= 8
-  }
+
 
   const handleWheel = (event) => {
     if (cardsRef.current && cardsRef.current.matches(':hover')) {
@@ -137,7 +134,6 @@ const TitleCards = ({ title, category }) => {
         animate="visible"
       >
         {movies.map((movie) => {
-          const isPremium = isPremiumMovie(movie)
           
           return (
             <motion.div 
@@ -160,12 +156,7 @@ const TitleCards = ({ title, category }) => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-dark-500/90 via-dark-400/30 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  {isPremium && (
-                    <div className="absolute top-2 right-2 bg-accent-500 text-white p-1 rounded-md shadow-lg flex items-center">
-                      <FaCrown className="mr-1" />
-                      <span className="text-xs font-semibold">Premium</span>
-                    </div>
-                  )}
+                 
                   
                   <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                     <h3 className="text-sm font-semibold line-clamp-1">

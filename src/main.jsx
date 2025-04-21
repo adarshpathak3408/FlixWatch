@@ -1,12 +1,12 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import App from './App.jsx'
-import './index.css'
-import { AuthProvider } from './contexts/AuthContext.jsx'
-import { LikeProvider } from './contexts/LikeContext.jsx'
-import { HistoryProvider } from './contexts/HistoryContext.jsx'
-import { WatchlistProvider } from './contexts/WatchlistContext.jsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App';
+import './index.css';
+import { AuthProvider } from './contexts/AuthContext';
+import { LikeProvider } from './contexts/LikeContext';
+import { HistoryProvider } from './contexts/HistoryContext';
+import { WatchlistProvider } from './contexts/WatchlistContext';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -21,5 +21,5 @@ createRoot(document.getElementById('root')).render(
         </LikeProvider>
       </AuthProvider>
     </BrowserRouter>
-  </StrictMode>,
-)
+  </StrictMode>
+);

@@ -35,7 +35,7 @@ const Player = () => {
     const loadMovieData = async () => {
       if (!id || isNaN(parseInt(id))) {
         setError('Invalid movie ID');
-        setLoading(false);
+setLoading(false);
         return;
       }
 
@@ -49,13 +49,21 @@ const Player = () => {
         const videos = await fetchMovieVideos(id);
         if (!isMounted) return;
 
-        const trailerData =
-          videos.results?.find((video) => video.type === 'Trailer' && video.site === 'YouTube') ||
-          videos.results?.[0];
+        // Log all videos to debug
+        console.log('Available videos for movie ID', id, videos.results);
+
+        // Select only a video that is a Trailer, from YouTube, and has "Trailer" in the name
+        const trailerData = videos.results?.find(
+          (video) =>
+            video.type === 'Trailer' &&
+            video.site === 'YouTube' &&
+            video.name.toLowerCase().includes('trailer')
+        );
 
         if (isMounted) {
           setMovieDetails(details);
-          setTrailer(trailerData || null);
+          setTrailer(trailerData || null); // Set to null if no valid trailer is found
+          console.log('Selected trailer:', trailerData || 'No trailer found');
 
           if (details) {
             addToHistory({
@@ -205,10 +213,12 @@ const Player = () => {
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-dark-500/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-8">
-                {trailer && (
+                {trailer ? (
                   <button onClick={toggleModal} className="btn btn-primary px-6 py-3 font-semibold">
                     Watch Trailer
                   </button>
+                ) : (
+                  <span className="text-gray-300">No Trailer Available</span>
                 )}
               </div>
             </div>
@@ -246,9 +256,13 @@ const Player = () => {
             <p className="text-lg text-gray-300 mb-6 leading-relaxed">{overview || 'No overview available.'}</p>
 
             <div className="flex flex-wrap gap-3 mb-8">
-              {trailer && (
+              {trailer ? (
                 <button onClick={toggleModal} className="btn btn-primary flex items-center gap-2">
                   <span>Watch Trailer</span>
+                </button>
+              ) : (
+                <button disabled className="btn btn-primary flex items-center gap-2 opacity-50 cursor-not-allowed">
+                  <span>No Trailer Available</span>
                 </button>
               )}
 
@@ -270,6 +284,7 @@ const Player = () => {
               <button
                 onClick={() => setShowGroupWatch(true)}
                 className="btn btn-ghost border border-white/20 flex items-center gap-2"
+                disabled={!trailer} // Disable Group Watch if no trailer
               >
                 <span>Group Watch</span>
               </button>
@@ -351,6 +366,7 @@ const Player = () => {
                       setShowGroupWatch(true);
                     }}
                     className="btn btn-ghost border border-white/20 flex items-center gap-2"
+                    disabled={!trailer}
                   >
                     <span>Group Watch</span>
                   </button>

@@ -1,42 +1,51 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
 import SearchBar from '../ui/SearchBar'
+import { IoPerson, IoBookmark, IoLogOut, IoChevronDown } from 'react-icons/io5'
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { user, login, logout } = useAuth()
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const { user, loading, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   
-  // Navigation links
+  // Navigation links - now handles protected routes
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Explore', path: '/explore' },
-    { name: 'Watchlist', path: '/watchlist' },
-    { name: 'Group Watch', path: '/groupwatch' }
-  ]
+    { name: 'Home', path: '/', protected: false },
+    { name: 'Explore', path: '/explore', protected: false },
+    { name: 'Watchlist', path: '/watchlist', protected: true },
+    { name: 'Group Watch', path: '/groupwatch', protected: true }
+  ].filter(link => !link.protected || user)
   
   // Update header background on scroll
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true)
-      } else {
-        setIsScrolled(false)
-      }
+      setIsScrolled(window.scrollY > 50)
     }
     
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
   
-  // Close mobile menu when route changes
+  // Close menus when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false)
+    setIsProfileDropdownOpen(false)
   }, [location])
-  
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate('/')
+    } catch (error) {
+      console.error('Error logging out:', error)
+    }
+  }
+
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
@@ -71,43 +80,88 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             <SearchBar />
             
-            {user ? (
-              <div className="relative group">
-                <button className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold">
-                  {user.name.charAt(0)}
+            {loading ? (
+              <div className="w-10 h-10 rounded-full bg-dark-200 animate-pulse"></div>
+            ) : user ? (
+              <div className="relative">
+                <button 
+                  className="flex items-center space-x-2 group"
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold">
+                    {user.user_metadata?.name?.charAt(0) || user.email.charAt(0)}
+                  </div>
+                  <IoChevronDown className={`text-gray-300 transition-transform duration-200 ${
+                    isProfileDropdownOpen ? 'rotate-180' : ''
+                  }`} />
                 </button>
                 
-                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-dark-200 ring-1 ring-dark-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
-                  <Link to="/profile" className="block px-4 py-2 text-sm hover:bg-dark-100">
-                    Profile
-                  </Link>
-                  <Link to="/watchlist" className="block px-4 py-2 text-sm hover:bg-dark-100">
-                    My Watchlist
-                  </Link>
-                  <button 
-                    onClick={logout}
-                    className="block w-full text-left px-4 py-2 text-sm hover:bg-dark-100"
-                  >
-                    Sign Out
-                  </button>
-                </div>
+                <AnimatePresence>
+                  {isProfileDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2 w-56 rounded-lg shadow-lg py-1 bg-dark-200 border border-dark-100"
+                    >
+                      <div className="px-4 py-3 border-b border-dark-100">
+                        <p className="text-sm font-medium text-white truncate">
+                          {user.user_metadata?.name || user.email}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                      <Link
+                        to="/profile"
+                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-100"
+                      >
+                        <IoPerson className="mr-2" />
+                        Profile
+                      </Link>
+                      <Link
+                        to="/watchlist"
+                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-100"
+                      >
+                        <IoBookmark className="mr-2" />
+                        My Watchlist
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-dark-100"
+                      >
+                        <IoLogOut className="mr-2" />
+                        Sign Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
-              <button
-                onClick={login}
-                className="btn btn-primary"
-              >
-                Sign In
-              </button>
+              <div className="flex items-center space-x-3">
+                <Link
+                  to="/login"
+                  className="btn btn-ghost border border-white/20 hover:border-primary-400 hover:text-primary-400"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="btn btn-primary"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
             
             {/* Mobile Menu Button */}
             <button
               className="block md:hidden p-2 text-white focus:outline-none"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle menu"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
               </svg>
             </button>
           </div>
@@ -140,12 +194,20 @@ const Header = () => {
                 ))}
                 
                 {!user && (
-                  <button
-                    onClick={login}
-                    className="btn btn-primary mt-3"
-                  >
-                    Sign In
-                  </button>
+                  <div className="flex space-x-3 pt-2">
+                    <Link
+                      to="/login"
+                      className="btn btn-ghost border border-white/20 flex-1 text-center"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      to="/signup"
+                      className="btn btn-primary flex-1 text-center"
+                    >
+                      Sign Up
+                    </Link>
+                  </div>
                 )}
               </nav>
             </div>
