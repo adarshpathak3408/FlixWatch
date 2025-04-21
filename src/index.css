@@ -70,6 +70,33 @@ body {
   .title-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-secondary-400 to-primary-500;
   }
+  
+  .premium-card {
+    @apply relative;
+  }
+  
+  .premium-card::after {
+    @apply absolute -inset-px rounded-xl pointer-events-none;
+    content: '';
+    background: linear-gradient(45deg, rgba(255, 215, 0, 0.3), transparent 40%, transparent 60%, rgba(255, 215, 0, 0.3));
+    animation: premium-border 4s linear infinite;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-
+@keyframes premium-border {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 300% 0%;
+  }
+}

@@ -11,6 +11,7 @@ const Player = lazy(() => import('./pages/Player'));
 const Watchlist = lazy(() => import('./pages/Watchlist'));
 const Explore = lazy(() => import('./pages/Explore'));
 const GroupWatch = lazy(() => import('./pages/GroupWatch'));
+const Premium = lazy(() => import('./pages/Premium'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -27,6 +28,7 @@ function App() {
             <Route path="/player/:id" element={<Player />} />
             <Route path="/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/premium" element={<Premium />} />
             <Route path="/groupwatch/:roomId?" element={<ProtectedRoute><GroupWatch /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/login" element={<Login />} />

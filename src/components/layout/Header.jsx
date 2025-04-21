@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
 import SearchBar from '../ui/SearchBar'
-import { IoPerson, IoBookmark, IoLogOut, IoChevronDown } from 'react-icons/io5'
+import { IoPerson, IoBookmark, IoLogOut, IoChevronDown, IoDiamond } from 'react-icons/io5'
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -17,6 +17,7 @@ const Header = () => {
   const navLinks = [
     { name: 'Home', path: '/', protected: false },
     { name: 'Explore', path: '/explore', protected: false },
+    { name: 'Premium Content', path: '/premium', protected: false, highlight: true },
     { name: 'Watchlist', path: '/watchlist', protected: true },
     { name: 'Group Watch', path: '/groupwatch', protected: true }
   ].filter(link => !link.protected || user)
@@ -66,11 +67,14 @@ const Header = () => {
                 key={link.path}
                 to={link.path}
                 className={`font-medium transition-colors hover:text-primary-400 ${
+                  link.highlight ? 'flex items-center gap-1' : ''
+                } ${
                   location.pathname === link.path 
                     ? 'text-primary-500' 
                     : 'text-white'
                 }`}
               >
+                {link.highlight && <IoDiamond className="text-yellow-400" />}
                 {link.name}
               </Link>
             ))}
@@ -125,6 +129,13 @@ const Header = () => {
                       >
                         <IoBookmark className="mr-2" />
                         My Watchlist
+                      </Link>
+                      <Link
+                        to="/premium"
+                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-100"
+                      >
+                        <IoDiamond className="mr-2 text-yellow-400" />
+                        Premium Content
                       </Link>
                       <button
                         onClick={handleLogout}
@@ -183,12 +194,15 @@ const Header = () => {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`px-3 py-2 rounded-md font-medium ${
+                    className={`px-3 py-2 rounded-md font-medium flex items-center ${
+                      link.highlight ? 'gap-1' : ''
+                    } ${
                       location.pathname === link.path 
                         ? 'bg-primary-600/20 text-primary-400' 
                         : 'hover:bg-dark-200'
                     }`}
                   >
+                    {link.highlight && <IoDiamond className="text-yellow-400" />}
                     {link.name}
                   </Link>
                 ))}

@@ -3,14 +3,16 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaCrown } from 'react-icons/fa'
 import { fetchMoviesByCategory } from '../../utils/api'
+import { usePremium } from '../../contexts/PremiumContext'
+import PremiumBadge from '../ui/PremiumBadge'
 
 const TitleCards = ({ title, category }) => {
   const [movies, setMovies] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [premiumIds, setPremiumIds] = useState([])
   const cardsRef = useRef()
   const navigate = useNavigate()
-
-
+  const { checkBatchPremiumStatus } = usePremium()
 
   const handleWheel = (event) => {
     if (cardsRef.current && cardsRef.current.matches(':hover')) {
@@ -45,6 +47,10 @@ const TitleCards = ({ title, category }) => {
         setIsLoading(true)
         const data = await fetchMoviesByCategory(category || 'now_playing')
         setMovies(data.results || [])
+        
+        // Check which movies are premium
+        const premiumMovieIds = checkBatchPremiumStatus(data.results || [])
+        setPremiumIds(premiumMovieIds)
       } catch (error) {
         console.error('Error fetching movies:', error)
       } finally {
@@ -58,7 +64,7 @@ const TitleCards = ({ title, category }) => {
     return () => {
       document.removeEventListener('wheel', handleWheel)
     }
-  }, [category])
+  }, [category, checkBatchPremiumStatus])
 
   // Animation variants
   const containerVariants = {
@@ -134,13 +140,14 @@ const TitleCards = ({ title, category }) => {
         animate="visible"
       >
         {movies.map((movie) => {
+          const isPremium = premiumIds.includes(movie.id);
           
           return (
             <motion.div 
               key={movie.id}
               variants={cardVariants}
               whileHover={{ scale: 1.05 }}
-              className="card flex-shrink-0 w-[300px] relative group cursor-pointer"
+              className={`card flex-shrink-0 w-[300px] relative group cursor-pointer ${isPremium ? 'premium-card' : ''}`}
               onClick={() => handleCardClick(movie.id)}
             >
               <div className="block h-full">
@@ -154,9 +161,18 @@ const TitleCards = ({ title, category }) => {
                       e.target.src = 'https://via.placeholder.com/300x169?text=No+Image'
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-dark-500/90 via-dark-400/30 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                 
+                  {/* Premium overlay gradient */}
+                  {isPremium && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-amber-800/50 via-dark-400/30 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  )}
+                  
+                  {/* Premium badge */}
+                  {isPremium && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <PremiumBadge size="small" />
+                    </div>
+                  )}
                   
                   <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                     <h3 className="text-sm font-semibold line-clamp-1">

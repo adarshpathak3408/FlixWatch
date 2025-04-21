@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { IoSearch, IoClose, IoTime } from 'react-icons/io5'
+import { IoSearch, IoClose, IoTime, IoDiamond } from 'react-icons/io5'
 import { searchMovies } from '../../utils/api'
+import { usePremium } from '../../contexts/PremiumContext'
 
 const SearchBar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
+  const [premiumIds, setPremiumIds] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [recentSearches, setRecentSearches] = useState([])
   const searchRef = useRef(null)
   const inputRef = useRef(null)
   const navigate = useNavigate()
+  const { checkBatchPremiumStatus } = usePremium()
   
   // Load recent searches from localStorage
   useEffect(() => {
@@ -55,6 +58,10 @@ const SearchBar = () => {
       try {
         const results = await searchMovies(searchQuery)
         setSearchResults(results.results?.slice(0, 5) || [])
+        
+        // Check which movies are premium
+        const premiumMovieIds = checkBatchPremiumStatus(results.results?.slice(0, 5) || [])
+        setPremiumIds(premiumMovieIds)
       } catch (error) {
         console.error('Error searching movies:', error)
       } finally {
@@ -63,7 +70,7 @@ const SearchBar = () => {
     }, 500)
     
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, checkBatchPremiumStatus])
   
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -197,40 +204,49 @@ const SearchBar = () => {
               <>
                 {searchResults.length > 0 ? (
                   <ul>
-                    {searchResults.map((movie) => (
-                      <li key={movie.id} className="border-b border-dark-100 last:border-b-0">
-                        <motion.button
-                          onClick={() => {
-                            navigate(`/player/${movie.id}`)
-                            setIsSearchOpen(false)
-                            setSearchQuery('')
-                          }}
-                          className="flex items-center p-3 w-full text-left hover:bg-dark-100/70 transition-colors"
-                          whileHover={{ x: 3 }}
-                        >
-                          <div className="w-12 h-16 flex-shrink-0 mr-3 overflow-hidden rounded-md">
-                            <img
-                              src={movie.poster_path ? `https://image.tmdb.org/t/p/w92${movie.poster_path}` : 'https://via.placeholder.com/92x138?text=No+Image'}
-                              alt={movie.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div>
-                            <h4 className="font-medium line-clamp-1">{movie.title}</h4>
-                            <div className="flex items-center text-xs text-gray-400">
-                              <span className="flex items-center">
-                                <svg className="w-3 h-3 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                                {movie.vote_average.toFixed(1)}
-                              </span>
-                              <span className="mx-2">•</span>
-                              <span>
-                                {movie.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown Year'}
-                              </span>
+                    {searchResults.map((movie) => {
+                      const isPremium = premiumIds.includes(movie.id);
+                      
+                      return (
+                        <li key={movie.id} className="border-b border-dark-100 last:border-b-0">
+                          <motion.button
+                            onClick={() => {
+                              navigate(`/player/${movie.id}`)
+                              setIsSearchOpen(false)
+                              setSearchQuery('')
+                            }}
+                            className={`flex items-center p-3 w-full text-left hover:bg-dark-100/70 transition-colors ${
+                              isPremium ? 'bg-gradient-to-r from-amber-900/30 to-transparent' : ''
+                            }`}
+                            whileHover={{ x: 3 }}
+                          >
+                            <div className="w-12 h-16 flex-shrink-0 mr-3 overflow-hidden rounded-md">
+                              <img
+                                src={movie.poster_path ? `https://image.tmdb.org/t/p/w92${movie.poster_path}` : 'https://via.placeholder.com/92x138?text=No+Image'}
+                                alt={movie.title}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
-                          </div>
-                        </motion.button>
-                      </li>
-                    ))}
+                            <div>
+                              <div className="flex items-center gap-1">
+                                <h4 className="font-medium line-clamp-1">{movie.title}</h4>
+                                {isPremium && <IoDiamond className="text-yellow-400 ml-1" size={14} />}
+                              </div>
+                              <div className="flex items-center text-xs text-gray-400">
+                                <span className="flex items-center">
+                                  <svg className="w-3 h-3 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                  {movie.vote_average.toFixed(1)}
+                                </span>
+                                <span className="mx-2">•</span>
+                                <span>
+                                  {movie.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown Year'}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.button>
+                        </li>
+                      );
+                    })}
                     <li className="p-2 text-center">
                       <button
                         onClick={handleSubmit}

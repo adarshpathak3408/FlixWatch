@@ -7,19 +7,28 @@ import { AuthProvider } from './contexts/AuthContext';
 import { LikeProvider } from './contexts/LikeContext';
 import { HistoryProvider } from './contexts/HistoryContext';
 import { WatchlistProvider } from './contexts/WatchlistContext';
+import { PremiumProvider } from './contexts/PremiumContext';
+
+const Root = () => {
+  return (
+    <AuthProvider>
+      <LikeProvider>
+        <HistoryProvider>
+          <WatchlistProvider>
+            <PremiumProvider>
+              <App />
+            </PremiumProvider>
+          </WatchlistProvider>
+        </HistoryProvider>
+      </LikeProvider>
+    </AuthProvider>
+  );
+};
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <LikeProvider>
-          <HistoryProvider>
-            <WatchlistProvider>
-              <App />
-            </WatchlistProvider>
-          </HistoryProvider>
-        </LikeProvider>
-      </AuthProvider>
+      <Root />
     </BrowserRouter>
   </StrictMode>
 );

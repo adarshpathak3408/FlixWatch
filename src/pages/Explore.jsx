@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { searchMovies, fetchGenres, fetchMoviesByGenre } from '../utils/api'
+import { usePremium } from '../contexts/PremiumContext'
+import PremiumBadge from '../components/ui/PremiumBadge'
 import LoadingScreen from '../components/ui/LoadingScreen'
 
 const Explore = () => {
@@ -10,7 +12,9 @@ const Explore = () => {
   const [genres, setGenres] = useState([])
   const [selectedGenre, setSelectedGenre] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [premiumIds, setPremiumIds] = useState([])
   
+  const { checkBatchPremiumStatus } = usePremium()
   const query = searchParams.get('query')
   
   useEffect(() => {
@@ -45,6 +49,10 @@ const Explore = () => {
         }
         
         setMovies(data.results || [])
+        
+        // Check which movies are premium
+        const premiumMovieIds = checkBatchPremiumStatus(data.results || [])
+        setPremiumIds(premiumMovieIds)
       } catch (error) {
         console.error('Error fetching movies:', error)
       } finally {
@@ -53,7 +61,7 @@ const Explore = () => {
     }
     
     fetchMovies()
-  }, [query, selectedGenre])
+  }, [query, selectedGenre, checkBatchPremiumStatus])
   
   // Handle genre selection
   const handleGenreChange = (genreId) => {
@@ -111,49 +119,70 @@ const Explore = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            {movies.map((movie) => (
-              <motion.div
-                key={movie.id}
-                whileHover={{ scale: 1.05 }}
-                className="movie-card overflow-hidden rounded-lg shadow-lg"
-              >
-                <a href={`/player/${movie.id}`} className="block">
-                  <div className="relative aspect-[2/3]">
-                    <img
-                      src={
-                        movie.poster_path
-                          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-                          : 'https://via.placeholder.com/500x750?text=No+Poster'
-                      }
-                      alt={movie.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-dark-500/90 via-dark-400/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                      <button className="btn btn-primary">Watch Trailer</button>
+            {movies.map((movie) => {
+              const isPremium = premiumIds.includes(movie.id);
+              
+              return (
+                <motion.div
+                  key={movie.id}
+                  whileHover={{ scale: 1.05 }}
+                  className={`movie-card overflow-hidden rounded-lg shadow-lg ${
+                    isPremium ? 'ring-1 ring-yellow-500/30' : ''
+                  }`}
+                >
+                  <a href={`/player/${movie.id}`} className="block">
+                    <div className="relative aspect-[2/3]">
+                      <img
+                        src={
+                          movie.poster_path
+                            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                            : 'https://via.placeholder.com/500x750?text=No+Poster'
+                        }
+                        alt={movie.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      
+                      {/* Premium overlay */}
+                      {isPremium ? (
+                        <div className="absolute inset-0 bg-gradient-to-t from-amber-800/70 via-dark-400/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <button className="btn btn-primary">Watch Trailer</button>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-t from-dark-500/90 via-dark-400/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <button className="btn btn-primary">Watch Trailer</button>
+                        </div>
+                      )}
+                      
+                      {/* Premium badge */}
+                      {isPremium && (
+                        <div className="absolute top-2 left-2 z-10">
+                          <PremiumBadge size="small" />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="p-4 bg-dark-200">
-                    <h3 className="font-semibold text-white line-clamp-1">{movie.title}</h3>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center">
-                        <span className="text-yellow-400 mr-1">★</span>
-                        <span className="text-sm text-gray-300">
-                          {movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}
+                    
+                    <div className={`p-4 ${isPremium ? 'bg-gradient-to-r from-amber-900/80 to-dark-200' : 'bg-dark-200'}`}>
+                      <h3 className="font-semibold text-white line-clamp-1">{movie.title}</h3>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center">
+                          <span className="text-yellow-400 mr-1">★</span>
+                          <span className="text-sm text-gray-300">
+                            {movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-400">
+                          {movie.release_date
+                            ? new Date(movie.release_date).getFullYear()
+                            : 'Unknown'
+                          }
                         </span>
                       </div>
-                      <span className="text-sm text-gray-400">
-                        {movie.release_date
-                          ? new Date(movie.release_date).getFullYear()
-                          : 'Unknown'
-                        }
-                      </span>
                     </div>
-                  </div>
-                </a>
-              </motion.div>
-            ))}
+                  </a>
+                </motion.div>
+              );
+            })}
           </motion.div>
         ) : (
           <div className="text-center py-12">

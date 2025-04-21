@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IoClose, IoArrowBack, IoHeart, IoHeartOutline } from 'react-icons/io5';
+import { IoClose, IoArrowBack, IoHeart, IoHeartOutline, IoDiamond } from 'react-icons/io5';
 import { fetchMovieDetails, fetchMovieVideos } from '../utils/api';
 import { useHistory } from '../contexts/HistoryContext';
 import { useLike } from '../contexts/LikeContext';
 import { useWatchlist } from '../contexts/WatchlistContext';
+import { usePremium } from '../contexts/PremiumContext';
 import GroupWatchModal from '../components/groupwatch/GroupWatchModal';
 import ReviewsPanel from '../components/reviews/ReviewsPanel';
 import RelatedMovies from '../components/trailers/RelatedMovies';
+import PremiumBadge from '../components/ui/PremiumBadge';
 import LoadingScreen from '../components/ui/LoadingScreen';
 
 const Player = () => {
@@ -20,10 +22,13 @@ const Player = () => {
   const [showGroupWatch, setShowGroupWatch] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
 
   const { addToHistory } = useHistory();
   const { likedMovies, likeMovie, removeLikedMovie } = useLike();
   const { watchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
+  const { isPremiumMovie } = usePremium();
+  
   const navigate = useNavigate();
 
   const isLiked = likedMovies.some((movie) => movie.id === parseInt(id));
@@ -35,7 +40,7 @@ const Player = () => {
     const loadMovieData = async () => {
       if (!id || isNaN(parseInt(id))) {
         setError('Invalid movie ID');
-setLoading(false);
+        setLoading(false);
         return;
       }
 
@@ -49,9 +54,6 @@ setLoading(false);
         const videos = await fetchMovieVideos(id);
         if (!isMounted) return;
 
-        // Log all videos to debug
-        console.log('Available videos for movie ID', id, videos.results);
-
         // Select only a video that is a Trailer, from YouTube, and has "Trailer" in the name
         const trailerData = videos.results?.find(
           (video) =>
@@ -62,8 +64,10 @@ setLoading(false);
 
         if (isMounted) {
           setMovieDetails(details);
-          setTrailer(trailerData || null); // Set to null if no valid trailer is found
-          console.log('Selected trailer:', trailerData || 'No trailer found');
+          setTrailer(trailerData || null);
+          
+          // Check if this is a premium movie
+          setIsPremium(isPremiumMovie(details));
 
           if (details) {
             addToHistory({
@@ -91,7 +95,7 @@ setLoading(false);
     return () => {
       isMounted = false;
     };
-  }, [id, addToHistory]);
+  }, [id, addToHistory, isPremiumMovie]);
 
   const handleLikeClick = () => {
     if (isLiked) {
@@ -184,7 +188,10 @@ setLoading(false);
           backgroundPosition: 'center 20%',
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-dark-500/70 via-dark-400/90 to-dark-300"></div>
+        <div className={`absolute inset-0 ${isPremium 
+          ? 'bg-gradient-to-b from-amber-900/70 via-dark-400/90 to-dark-300' 
+          : 'bg-gradient-to-b from-dark-500/70 via-dark-400/90 to-dark-300'
+        }`}></div>
       </div>
 
       <button
@@ -202,7 +209,9 @@ setLoading(false);
             transition={{ duration: 0.5 }}
             className="md:col-span-1"
           >
-            <div className="relative rounded-xl overflow-hidden shadow-2xl group">
+            <div className={`relative rounded-xl overflow-hidden shadow-2xl group ${
+              isPremium ? 'ring-2 ring-yellow-500/30' : ''
+            }`}>
               <img
                 src={posterUrl}
                 alt={movieTitle}
@@ -221,6 +230,13 @@ setLoading(false);
                   <span className="text-gray-300">No Trailer Available</span>
                 )}
               </div>
+              
+              {/* Premium badge */}
+              {isPremium && (
+                <div className="absolute top-3 left-3 z-10">
+                  <PremiumBadge />
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -230,7 +246,10 @@ setLoading(false);
             transition={{ duration: 0.5, delay: 0.2 }}
             className="md:col-span-2"
           >
-            <h1 className="text-4xl md:text-5xl font-bold mb-2">{movieTitle}</h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-4xl md:text-5xl font-bold">{movieTitle}</h1>
+              {isPremium && <IoDiamond className="text-yellow-400 text-3xl" />}
+            </div>
 
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="text-sm bg-primary-600/20 text-primary-400 px-3 py-1 rounded-full">
@@ -343,7 +362,10 @@ setLoading(false);
               </div>
 
               <div className="p-6">
-                <h2 className="text-2xl font-bold mb-2">{movieTitle} - Trailer</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold mb-2">{movieTitle} - Trailer</h2>
+                  {isPremium && <PremiumBadge />}
+                </div>
                 <div className="flex flex-wrap gap-3 mt-4">
                   <button
                     onClick={handleLikeClick}
