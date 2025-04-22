@@ -301,9 +301,9 @@ const Player = () => {
               </button>
 
               <button
-                onClick={() => setShowGroupWatch(true)}
-                className="btn btn-ghost border border-white/20 flex items-center gap-2"
-                disabled={!trailer} // Disable Group Watch if no trailer
+                onClick={() => navigate(`/group?videoKey=${trailer.key}`)}
+                className="btn btn-ghost border border-white/20 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded"
+                disabled={!trailer}
               >
                 <span>Group Watch</span>
               </button>

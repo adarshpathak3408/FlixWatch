@@ -4,13 +4,14 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import LoadingScreen from './components/ui/LoadingScreen';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import GroupLanding from './pages/GroupLanding';
+import GroupRoom    from './pages/GroupRoom';
+import Player       from './pages/Player';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
-const Player = lazy(() => import('./pages/Player'));
 const Watchlist = lazy(() => import('./pages/Watchlist'));
 const Explore = lazy(() => import('./pages/Explore'));
-const GroupWatch = lazy(() => import('./pages/GroupWatch'));
 const Premium = lazy(() => import('./pages/Premium'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Login = lazy(() => import('./pages/Login'));
@@ -29,7 +30,8 @@ function App() {
             <Route path="/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/premium" element={<Premium />} />
-            <Route path="/groupwatch/:roomId?" element={<ProtectedRoute><GroupWatch /></ProtectedRoute>} />
+            <Route path="/group"      element={<GroupLanding />} />
+            <Route path="/group/:roomId" element={<GroupRoom />} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
