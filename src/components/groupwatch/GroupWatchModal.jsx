@@ -1,122 +1,128 @@
-import { useState, useEffect, useRef } from 'react';
-import { IoClose, IoShareSocial, IoHeart, IoHeartOutline } from 'react-icons/io5';
-import { useAuth } from '../../contexts/AuthContext';
-import { useLike } from '../../contexts/LikeContext';
-import { useGroupWatch } from '../../contexts/GroupWatchContext';
-import ChatPanel from './ChatPanel';
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { IoClose, IoShareSocial, IoHeart, IoHeartOutline } from 'react-icons/io5'
+import { v4 as uuidv4 } from 'uuid'
+import { useAuth } from '../../contexts/AuthContext'
+import ChatPanel from './ChatPanel'
+import { useLike } from '../../contexts/LikeContext'
 
 const GroupWatchModal = ({ movie, onClose }) => {
-  const { user } = useAuth();
-  const { likedMovies, likeMovie, removeLikedMovie } = useLike();
-  const {
-    currentRoom,
-    joinRoom,
-    leaveRoom,
-    messages,
-    users,
-    isHost,
-    playbackState,
-    sendPlaybackUpdate,
-    requestSync,
-    sendMessage
-  } = useGroupWatch();
+  const [roomId, setRoomId] = useState('')
+  const [inviteUrl, setInviteUrl] = useState('')
+  const [messages, setMessages] = useState([])
+  const [viewers, setViewers] = useState([])
+  const [isPlaying, setIsPlaying] = useState(false)
+  const { user } = useAuth()
+  const { likedMovies, likeMovie, removeLikedMovie } = useLike()
   
-  const [roomId, setRoomId] = useState('');
-  const [inviteUrl, setInviteUrl] = useState('');
-  const playerRef = useRef(null);
-  const isLiked = likedMovies.some(m => m.id === movie.id);
+  const isLiked = likedMovies.some(m => m.id === movie.id)
 
+  // Simulate joining room
   useEffect(() => {
-    // Generate room ID if creating new room
-    if (!currentRoom && !roomId) {
-      const newRoomId = Math.random().toString(36).substring(2, 10);
-      setRoomId(newRoomId);
-      setInviteUrl(`${window.location.origin}/groupwatch/${newRoomId}`);
-    }
-  }, [currentRoom, roomId]);
-
-  useEffect(() => {
-    if (currentRoom && movie) {
-      joinRoom(currentRoom, movie);
-    }
-  }, [currentRoom, movie, joinRoom]);
-
-  useEffect(() => {
-    return () => {
-      leaveRoom();
-    };
-  }, [leaveRoom]);
-
+    // Generate random room ID if none exists
+    const newRoomId = uuidv4().substring(0, 8)
+    setRoomId(newRoomId)
+    setInviteUrl(`${window.location.origin}/groupwatch/${newRoomId}`)
+    
+    // Simulate some viewers
+    setViewers([
+      { id: 1, name: 'You (Host)', isHost: true },
+      { id: 2, name: 'Guest 1', isHost: false }
+    ])
+    
+    // Simulate some welcome messages
+    setMessages([
+      { id: 1, sender: 'System', text: `Welcome to the GroupWatch room!`, timestamp: new Date().toISOString() },
+      { id: 2, sender: 'System', text: `You are watching "${movie.title}"`, timestamp: new Date().toISOString() },
+      { id: 3, sender: 'System', text: `Invite friends by sharing the room link`, timestamp: new Date().toISOString() }
+    ])
+    
+  }, [movie.title])
+  
   const handleCopyInvite = () => {
     navigator.clipboard.writeText(inviteUrl)
       .then(() => {
-        sendMessage('Invite link copied to clipboard!');
+        // Add system message
+        setMessages(prev => [
+          ...prev,
+          { 
+            id: Date.now(), 
+            sender: 'System', 
+            text: 'Invite link copied to clipboard!', 
+            timestamp: new Date().toISOString() 
+          }
+        ])
       })
       .catch(err => {
-        console.error('Failed to copy invite link:', err);
-      });
-  };
-
+        console.error('Failed to copy invite link:', err)
+      })
+  }
+  
   const handleLike = () => {
     if (isLiked) {
-      removeLikedMovie(movie.id);
+      removeLikedMovie(movie.id)
     } else {
       likeMovie({
         id: movie.id,
         title: movie.title,
         poster: movie.poster
-      });
-      sendMessage('❤️ liked this trailer!');
+      })
+      
+      // Add message to chat
+      setMessages(prev => [
+        ...prev,
+        { 
+          id: Date.now(), 
+          sender: 'You', 
+          text: '❤️ liked this trailer!', 
+          timestamp: new Date().toISOString() 
+        }
+      ])
     }
-  };
-
-  const togglePlayPause = () => {
-    if (!playerRef.current) return;
+  }
+  
+  const handleSendMessage = (message) => {
+    if (!message.trim()) return
     
-    const newIsPlaying = !playbackState.isPlaying;
-    const currentTime = playerRef.current.getCurrentTime();
-    
-    sendPlaybackUpdate(newIsPlaying, currentTime);
-    
-    if (newIsPlaying) {
-      playerRef.current.playVideo();
-    } else {
-      playerRef.current.pauseVideo();
-    }
-  };
-
-  const onPlayerReady = (event) => {
-    playerRef.current = event.target;
-    
-    // Sync with host if not host
-    if (!isHost) {
-      requestSync();
-      playerRef.current.seekTo(playbackState.currentTime);
-      if (playbackState.isPlaying) {
-        playerRef.current.playVideo();
-      } else {
-        playerRef.current.pauseVideo();
+    setMessages(prev => [
+      ...prev,
+      { 
+        id: Date.now(), 
+        sender: 'You', 
+        text: message, 
+        timestamp: new Date().toISOString() 
       }
-    }
-  };
-
-  const onPlayerStateChange = (event) => {
-    if (!isHost || !playerRef.current) return;
+    ])
+  }
+  
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying)
     
-    // Only sync play/pause and time updates from host
-    if (event.data === window.YT.PlayerState.PLAYING || 
-        event.data === window.YT.PlayerState.PAUSED) {
-      const currentTime = playerRef.current.getCurrentTime();
-      sendPlaybackUpdate(
-        event.data === window.YT.PlayerState.PLAYING,
-        currentTime
-      );
-    }
-  };
+    // Add message to chat
+    setMessages(prev => [
+      ...prev,
+      { 
+        id: Date.now(), 
+        sender: 'You (Host)', 
+        text: `${!isPlaying ? '▶️ Started' : '⏸️ Paused'} the trailer for everyone`, 
+        timestamp: new Date().toISOString() 
+      }
+    ])
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-500/95">
-      <div className="w-full h-full md:h-auto md:w-auto md:max-w-6xl md:max-h-[90vh] bg-dark-300 rounded-xl overflow-hidden flex flex-col md:flex-row">
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-dark-500/95"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="w-full h-full md:h-auto md:w-auto md:max-w-6xl md:max-h-[90vh] bg-dark-300 rounded-xl overflow-hidden flex flex-col md:flex-row"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+      >
         {/* Left Side - Video Player */}
         <div className="w-full md:w-3/4 h-[40vh] md:h-auto relative">
           {/* Close Button */}
@@ -132,35 +138,23 @@ const GroupWatchModal = ({ movie, onClose }) => {
             <iframe
               width="100%"
               height="100%"
-              src={`https://www.youtube.com/embed/${movie.trailerKey}?enablejsapi=1`}
+              src={`https://www.youtube.com/embed/${movie.trailerKey}?autoplay=0&enablejsapi=1`}
               title={`${movie.title} - Group Watch`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="w-full h-full"
-              onLoad={(e) => {
-                // Inject YouTube API script if not already loaded
-                if (!window.YT) {
-                  const tag = document.createElement('script');
-                  tag.src = "https://www.youtube.com/iframe_api";
-                  const firstScriptTag = document.getElementsByTagName('script')[0];
-                  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-                }
-              }}
-              id="yt-player"
             ></iframe>
           </div>
           
           {/* Control Bar */}
           <div className="bg-dark-400 p-4 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {isHost && (
-                <button 
-                  onClick={togglePlayPause}
-                  className="btn btn-primary flex items-center space-x-2"
-                >
-                  <span>{playbackState.isPlaying ? 'Pause for All' : 'Play for All'}</span>
-                </button>
-              )}
+              <button 
+                onClick={togglePlayPause}
+                className="btn btn-primary flex items-center space-x-2"
+              >
+                <span>{isPlaying ? 'Pause for All' : 'Play for All'}</span>
+              </button>
               
               <button 
                 onClick={handleLike}
@@ -171,7 +165,7 @@ const GroupWatchModal = ({ movie, onClose }) => {
             </div>
             
             <div>
-              <div className="text-xs text-gray-400">Room ID: {currentRoom}</div>
+              <div className="text-xs text-gray-400">Room ID: {roomId}</div>
             </div>
           </div>
         </div>
@@ -184,16 +178,16 @@ const GroupWatchModal = ({ movie, onClose }) => {
             <p className="text-sm text-gray-300 mb-4">Group Watch Room</p>
             
             <div className="flex flex-wrap gap-2">
-              {users.map(user => (
+              {viewers.map(viewer => (
                 <span 
-                  key={user.userId}
+                  key={viewer.id}
                   className={`text-xs px-2 py-1 rounded-full ${
-                    user.isHost 
+                    viewer.isHost 
                       ? 'bg-primary-600/30 text-primary-400' 
                       : 'bg-dark-100/80 text-gray-300'
                   }`}
                 >
-                  {user.username} {user.isHost ? '(Host)' : ''}
+                  {viewer.name}
                 </span>
               ))}
             </div>
@@ -208,15 +202,11 @@ const GroupWatchModal = ({ movie, onClose }) => {
           </div>
           
           {/* Chat Panel */}
-          <ChatPanel 
-            messages={messages} 
-            onSendMessage={sendMessage}
-            currentUser={user?.name || 'You'}
-          />
+          <ChatPanel messages={messages} onSendMessage={handleSendMessage} />
         </div>
-      </div>
-    </div>
-  );
-};
+      </motion.div>
+    </motion.div>
+  )
+}
 
-export default GroupWatchModal;
+export default GroupWatchModal
