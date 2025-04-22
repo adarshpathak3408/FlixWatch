@@ -1,23 +1,30 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { useHistory } from '../contexts/HistoryContext';
-import { useWatchlist } from '../contexts/WatchlistContext';
-import { useLike } from '../contexts/LikeContext';
 import { IoPerson, IoBookmark, IoHeart, IoTime, IoLogOut, IoCog, IoHelpCircle } from 'react-icons/io5';
 import { FaCrown } from 'react-icons/fa';
+import { supabase } from '../lib/supabase';
 
 const Profile = () => {
-  const { user, logout, isPremium, upgradeToPremium } = useAuth();
-  const { history, clearHistory } = useHistory();
-  const { watchlist } = useWatchlist();
-  const { likedMovies } = useLike();
+  const { user, logout, updateProfile, isPremium, upgradeToPremium, updateEmail, updatePassword } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
     totalWatched: 0,
     totalHours: 0,
     favoriteGenre: 'Action'
+  });
+  const [history, setHistory] = useState([]);
+  const [watchlist, setWatchlist] = useState([]);
+  const [likedMovies, setLikedMovies] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editData, setEditData] = useState({
+    name: '',
+    email: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   });
   const navigate = useNavigate();
 
@@ -27,16 +34,49 @@ const Profile = () => {
       return;
     }
 
-    // Calculate stats
-    setStats({
-      totalWatched: history.length,
-      totalHours: Math.floor(history.length * 1.5), // Assuming average 1.5 hours per movie
-      favoriteGenre: calculateFavoriteGenre()
-    });
-  }, [user, history]);
+    fetchUserData();
+  }, [user]);
 
-  const calculateFavoriteGenre = () => {
-    // This would be calculated from user's watch history in a real app
+  const fetchUserData = async () => {
+    setLoading(true);
+    try {
+      // Fetch history
+      const { data: historyData } = await supabase
+        .from('history')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Fetch watchlist
+      const { data: watchlistData } = await supabase
+        .from('watchlist')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Fetch liked movies
+      const { data: likedData } = await supabase
+        .from('likes')
+        .select('*')
+        .eq('user_id', user.id);
+
+      setHistory(historyData || []);
+      setWatchlist(watchlistData || []);
+      setLikedMovies(likedData || []);
+
+      // Calculate stats
+      setStats({
+        totalWatched: historyData?.length || 0,
+        totalHours: Math.floor((historyData?.length || 0) * 1.5),
+        favoriteGenre: calculateFavoriteGenre(likedData || [])
+      });
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateFavoriteGenre = (likedMovies) => {
+    // Implement your genre calculation logic here
     const genres = ['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'];
     return genres[Math.floor(Math.random() * genres.length)];
   };
@@ -47,6 +87,49 @@ const Profile = () => {
       navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    try {
+      await updateProfile({ name: editData.name });
+      // Refresh user data
+      const { data: { user: updatedUser } } = await supabase.auth.getUser();
+      setUser(updatedUser);
+    } catch (error) {
+      console.error('Profile update error:', error);
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    try {
+      await updateEmail(editData.email);
+    } catch (error) {
+      console.error('Email update error:', error);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    try {
+      if (editData.newPassword !== editData.confirmPassword) {
+        throw new Error("Passwords don't match");
+      }
+      await updatePassword(editData.newPassword);
+    } catch (error) {
+      console.error('Password update error:', error);
+    }
+  };
+
+  const clearHistory = async () => {
+    try {
+      const { error } = await supabase
+        .from('history')
+        .delete()
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setHistory([]);
+    } catch (error) {
+      console.error('Error clearing history:', error);
     }
   };
 
@@ -416,40 +499,86 @@ const Profile = () => {
 
               {/* Settings Tab */}
               {activeTab === 'settings' && (
+        <div>
+          <h2 className="text-2xl font-bold mb-6">Account Settings</h2>
+          
+          <div className="space-y-6">
+            {/* Profile Settings */}
+            <div className="bg-dark-300 rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <IoPerson />
+                Profile Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold mb-6">Account Settings</h2>
-                  
-                  <div className="space-y-6">
-                    {/* Profile Settings */}
-                    <div className="bg-dark-300 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <IoPerson />
-                        Profile Information
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-gray-400 text-sm mb-2">Name</label>
-                          <input
-                            type="text"
-                            value={user.user_metadata?.name || ''}
-                            className="w-full bg-dark-200 border border-dark-100 rounded-lg px-4 py-2"
-                            placeholder="Your name"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-gray-400 text-sm mb-2">Email</label>
-                          <input
-                            type="email"
-                            value={user.email}
-                            className="w-full bg-dark-200 border border-dark-100 rounded-lg px-4 py-2"
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                      <button className="btn btn-primary mt-4">
-                        Save Changes
-                      </button>
-                    </div>
+                  <label className="block text-gray-400 text-sm mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={editData.name || user.user_metadata?.name || ''}
+                    onChange={(e) => setEditData({...editData, name: e.target.value})}
+                    className="w-full bg-dark-200 border border-dark-100 rounded-lg px-4 py-2"
+                    placeholder="Your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={editData.email || user.email || ''}
+                    onChange={(e) => setEditData({...editData, email: e.target.value})}
+                    className="w-full bg-dark-200 border border-dark-100 rounded-lg px-4 py-2"
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={handleUpdateProfile}
+                className="btn btn-primary mt-4"
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+
+            {/* Password Update */}
+            <div className="bg-dark-300 rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-4">Change Password</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Current Password</label>
+                  <input
+                    type="password"
+                    value={editData.currentPassword}
+                    onChange={(e) => setEditData({...editData, currentPassword: e.target.value})}
+                    className="w-full bg-dark-200 border border-dark-100 rounded-lg px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">New Password</label>
+                  <input
+                    type="password"
+                    value={editData.newPassword}
+                    onChange={(e) => setEditData({...editData, newPassword: e.target.value})}
+                    className="w-full bg-dark-200 border border-dark-100 rounded-lg px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={editData.confirmPassword}
+                    onChange={(e) => setEditData({...editData, confirmPassword: e.target.value})}
+                    className="w-full bg-dark-200 border border-dark-100 rounded-lg px-4 py-2"
+                  />
+                </div>
+                <button 
+                  onClick={handleUpdatePassword}
+                  className="btn btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </div>
 
                     {/* Preferences */}
                     <div className="bg-dark-300 rounded-lg p-6">

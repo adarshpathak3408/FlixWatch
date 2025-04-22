@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active sessions and sets the user
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
@@ -17,7 +16,6 @@ export const AuthProvider = ({ children }) => {
 
     getSession();
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -26,13 +24,9 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Login with email and password
   const login = async (email, password) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return data;
     } catch (error) {
@@ -40,17 +34,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Signup with email and password
   const signUp = async (email, password, name) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name,
-          }
-        }
+        options: { data: { name } }
       });
       if (error) throw error;
       return data;
@@ -59,11 +48,44 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const updateProfile = async (updates) => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: updates
+      });
+      if (error) throw error;
+      setUser(data.user);
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const updateEmail = async (newEmail) => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+      setUser(data.user);
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const updatePassword = async (newPassword) => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      return data;
     } catch (error) {
       throw error;
     }
@@ -74,6 +96,9 @@ export const AuthProvider = ({ children }) => {
     login,
     signUp,
     logout,
+    updateProfile,
+    updateEmail,
+    updatePassword,
     loading,
   };
 
