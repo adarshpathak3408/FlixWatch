@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IoClose, IoArrowBack, IoHeart, IoHeartOutline, IoDiamond } from 'react-icons/io5';
+import { FaCrown } from 'react-icons/fa';
 import { fetchMovieDetails, fetchMovieVideos } from '../utils/api';
 import { useHistory } from '../contexts/HistoryContext';
 import { useLike } from '../contexts/LikeContext';
 import { useWatchlist } from '../contexts/WatchlistContext';
 import { usePremium } from '../contexts/PremiumContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import GroupWatchModal from '../components/groupwatch/GroupWatchModal';
 import ReviewsPanel from '../components/reviews/ReviewsPanel';
 import RelatedMovies from '../components/trailers/RelatedMovies';
 import PremiumBadge from '../components/ui/PremiumBadge';
 import LoadingScreen from '../components/ui/LoadingScreen';
+import SubscriptionModal from '../components/subscription/SubscriptionModal';
 
 const Player = () => {
   const { id } = useParams();
@@ -23,11 +26,13 @@ const Player = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   const { addToHistory } = useHistory();
   const { likedMovies, likeMovie, removeLikedMovie } = useLike();
   const { watchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { isPremiumMovie } = usePremium();
+  const { isSubscriptionActive } = useSubscription();
   
   const navigate = useNavigate();
 
@@ -163,6 +168,42 @@ const Player = () => {
     );
   }
 
+  if (isPremium && !isSubscriptionActive()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-300">
+        <div className="text-center max-w-md p-8 bg-dark-400 rounded-xl">
+          <div className="mb-6">
+            <FaCrown className="text-yellow-400 text-5xl mx-auto" />
+          </div>
+          <h2 className="text-2xl font-bold mb-4">Premium Content Locked</h2>
+          <p className="text-gray-300 mb-6">
+            This content is only available to premium subscribers. Upgrade your account to access premium trailers and features.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => setShowSubscriptionModal(true)}
+              className="btn btn-primary"
+            >
+              <FaCrown className="mr-2" />
+              Upgrade to Premium
+            </button>
+            <button 
+              onClick={() => navigate('/')}
+              className="btn btn-ghost border border-white/20"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+        <SubscriptionModal 
+          isOpen={showSubscriptionModal} 
+          onClose={() => setShowSubscriptionModal(false)}
+          movieId={id}
+        />
+      </div>
+    );
+  }
+
   const { backdrop_path, poster_path, original_title, title, release_date, vote_average, overview, genres } =
     movieDetails;
 
@@ -266,7 +307,7 @@ const Player = () => {
                 ))}
               {vote_average > 0 && (
                 <span className="text-sm bg-secondary-600/20 text-secondary-400 px-3 py-1 rounded-full flex items-center">
-                  <span className="text-yellow-400 mr-1">★</span>
+                  <span className="text-yellow-400 mr-1">Ôÿà</span>
                   {vote_average.toFixed(1)}/10
                 </span>
               )}
@@ -300,13 +341,14 @@ const Player = () => {
                 <span>{isInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}</span>
               </button>
 
-              <button
-                onClick={() => navigate(`/group?videoKey=${trailer.key}`)}
-                className="btn btn-ghost border border-white/20 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded"
-                disabled={!trailer}
-              >
-                <span>Group Watch</span>
-              </button>
+              {trailer && (
+                <button
+                  onClick={() => navigate(`/group?videoKey=${trailer.key}`)}
+                  className="btn btn-ghost border border-white/20 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  <span>Group Watch</span>
+                </button>
+              )}
 
               <button
                 onClick={() => setShowReviews(true)}
@@ -329,14 +371,14 @@ const Player = () => {
       <AnimatePresence>
         {isModalOpen && trailer && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={toggleModal}
           >
             <motion.div
-              className="relative w-full max-w-6xl bg-dark-400 rounded-xl overflow-hidden"
+              className="relative w-full max-w-6xl bg-dark-400 rounded-xl overflow-hidden shadow-xl"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -388,7 +430,6 @@ const Player = () => {
                       setShowGroupWatch(true);
                     }}
                     className="btn btn-ghost border border-white/20 flex items-center gap-2"
-                    disabled={!trailer}
                   >
                     <span>Group Watch</span>
                   </button>
@@ -418,6 +459,12 @@ const Player = () => {
           />
         )}
       </AnimatePresence>
+
+      <SubscriptionModal 
+        isOpen={showSubscriptionModal} 
+        onClose={() => setShowSubscriptionModal(false)}
+        movieId={id}
+      />
     </div>
   );
 };

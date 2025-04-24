@@ -16,6 +16,11 @@ export const PremiumProvider = ({ children }) => {
     );
   };
 
+  // Check if a specific movie ID is premium
+  const isMoviePremium = (movieId) => {
+    return premiumMovies.some(movie => movie.id === parseInt(movieId));
+  };
+
   // Add a movie to premium list
   const addPremiumMovie = (movie) => {
     setPremiumMovies((prev) => {
@@ -24,11 +29,6 @@ export const PremiumProvider = ({ children }) => {
       }
       return [...prev, movie];
     });
-  };
-
-  // Check if a movie is premium
-  const isMoviePremium = (movieId) => {
-    return premiumMovies.some((movie) => movie.id === movieId);
   };
 
   // Check multiple movies and determine which ones are premium
@@ -63,4 +63,4 @@ export const usePremium = () => {
     throw new Error('usePremium must be used within a PremiumProvider');
   }
   return context;
-};
+};x

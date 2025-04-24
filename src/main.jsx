@@ -8,6 +8,7 @@ import { LikeProvider } from './contexts/LikeContext';
 import { HistoryProvider } from './contexts/HistoryContext';
 import { WatchlistProvider } from './contexts/WatchlistContext';
 import { PremiumProvider } from './contexts/PremiumContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
 
 const Root = () => {
   return (
@@ -16,7 +17,9 @@ const Root = () => {
         <HistoryProvider>
           <WatchlistProvider>
             <PremiumProvider>
-              <App />
+              <SubscriptionProvider>
+                <App />
+              </SubscriptionProvider>
             </PremiumProvider>
           </WatchlistProvider>
         </HistoryProvider>

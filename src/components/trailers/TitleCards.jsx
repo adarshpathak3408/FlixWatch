@@ -5,6 +5,8 @@ import { FaCrown } from 'react-icons/fa'
 import { fetchMoviesByCategory } from '../../utils/api'
 import { usePremium } from '../../contexts/PremiumContext'
 import PremiumBadge from '../ui/PremiumBadge'
+import { useSubscription } from '../../contexts/SubscriptionContext'
+import SubscriptionModal from '../subscription/SubscriptionModal'
 
 const TitleCards = ({ title, category }) => {
   const [movies, setMovies] = useState([])
@@ -13,6 +15,9 @@ const TitleCards = ({ title, category }) => {
   const cardsRef = useRef()
   const navigate = useNavigate()
   const { checkBatchPremiumStatus } = usePremium()
+  const { isSubscriptionActive } = useSubscription()
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [selectedMovie, setSelectedMovie] = useState(null)
 
   const handleWheel = (event) => {
     if (cardsRef.current && cardsRef.current.matches(':hover')) {
@@ -86,8 +91,15 @@ const TitleCards = ({ title, category }) => {
     }
   }
 
-  const handleCardClick = (movieId) => {
-    navigate(`/player/${movieId}`)
+  const handleCardClick = (movie) => {
+    const isPremium = premiumIds.includes(movie.id)
+    
+    if (isPremium && !isSubscriptionActive()) {
+      setSelectedMovie(movie)
+      setShowSubscriptionModal(true)
+    } else {
+      navigate(`/player/${movie.id}`)
+    }
   }
 
   if (isLoading) {
@@ -140,7 +152,7 @@ const TitleCards = ({ title, category }) => {
         animate="visible"
       >
         {movies.map((movie) => {
-          const isPremium = premiumIds.includes(movie.id);
+          const isPremium = premiumIds.includes(movie.id)
           
           return (
             <motion.div 
@@ -148,7 +160,7 @@ const TitleCards = ({ title, category }) => {
               variants={cardVariants}
               whileHover={{ scale: 1.05 }}
               className={`card flex-shrink-0 w-[300px] relative group cursor-pointer ${isPremium ? 'premium-card' : ''}`}
-              onClick={() => handleCardClick(movie.id)}
+              onClick={() => handleCardClick(movie)}
             >
               <div className="block h-full">
                 <div className="relative overflow-hidden rounded-xl aspect-video">
@@ -179,7 +191,7 @@ const TitleCards = ({ title, category }) => {
                       {movie.title || movie.original_title}
                     </h3>
                     <div className="flex items-center mt-1">
-                      <span className="text-yellow-400 text-xs mr-1">★</span>
+                      <span className="text-yellow-400 text-xs mr-1">Ôÿà</span>
                       <span className="text-xs">{movie.vote_average.toFixed(1)}</span>
                     </div>
                   </div>
@@ -189,6 +201,12 @@ const TitleCards = ({ title, category }) => {
           )
         })}
       </motion.div>
+
+      <SubscriptionModal 
+        isOpen={showSubscriptionModal} 
+        onClose={() => setShowSubscriptionModal(false)}
+        movieId={selectedMovie?.id}
+      />
     </div>
   )
 }
