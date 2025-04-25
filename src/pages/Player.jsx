@@ -32,7 +32,7 @@ const Player = () => {
   const { likedMovies, likeMovie, removeLikedMovie } = useLike();
   const { watchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { isPremiumMovie } = usePremium();
-  const { isSubscriptionActive } = useSubscription();
+  const { isSubscriptionActive, subscription } = useSubscription();
   
   const navigate = useNavigate();
 
@@ -72,7 +72,13 @@ const Player = () => {
           setTrailer(trailerData || null);
           
           // Check if this is a premium movie
-          setIsPremium(isPremiumMovie(details));
+          const premiumStatus = isPremiumMovie(details);
+          setIsPremium(premiumStatus);
+
+          // If it's a premium movie and user doesn't have an active subscription, show subscription modal
+          if (premiumStatus && !isSubscriptionActive()) {
+            setShowSubscriptionModal(true);
+          }
 
           if (details) {
             addToHistory({
@@ -100,7 +106,7 @@ const Player = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, addToHistory, isPremiumMovie]);
+  }, [id, addToHistory, isPremiumMovie, isSubscriptionActive]);
 
   const handleLikeClick = () => {
     if (isLiked) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { searchMovies, fetchGenres, fetchMoviesByGenre } from '../utils/api'
 import { usePremium } from '../contexts/PremiumContext'
@@ -8,14 +8,16 @@ import LoadingScreen from '../components/ui/LoadingScreen'
 
 const Explore = () => {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [movies, setMovies] = useState([])
   const [genres, setGenres] = useState([])
-  const [selectedGenre, setSelectedGenre] = useState('')
+  const [selectedGenre, setSelectedGenre] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
   const [premiumIds, setPremiumIds] = useState([])
   
   const { checkBatchPremiumStatus } = usePremium()
   const query = searchParams.get('query')
+  const genreId = searchParams.get('genre')
   
   useEffect(() => {
     // Fetch genres once
@@ -32,6 +34,15 @@ const Explore = () => {
   }, [])
   
   useEffect(() => {
+    // Set selected genre from URL parameter
+    if (genreId) {
+      setSelectedGenre(genreId)
+    } else {
+      setSelectedGenre('all')
+    }
+  }, [genreId])
+  
+  useEffect(() => {
     const fetchMovies = async () => {
       setIsLoading(true)
       
@@ -40,7 +51,7 @@ const Explore = () => {
         if (query) {
           // If we have a search query, search for movies
           data = await searchMovies(query)
-        } else if (selectedGenre) {
+        } else if (selectedGenre && selectedGenre !== 'all') {
           // If a genre is selected, fetch movies by genre
           data = await fetchMoviesByGenre(selectedGenre)
         } else {
@@ -66,6 +77,7 @@ const Explore = () => {
   // Handle genre selection
   const handleGenreChange = (genreId) => {
     setSelectedGenre(genreId)
+    navigate(`/explore?genre=${genreId}`)
   }
   
   if (isLoading) {
@@ -84,10 +96,10 @@ const Explore = () => {
             <div className="overflow-x-auto pb-4">
               <div className="flex space-x-2">
                 <button 
-                  onClick={() => handleGenreChange('')}
+                  onClick={() => handleGenreChange('all')}
                   className={`px-4 py-2 rounded-full whitespace-nowrap transition-all duration-300 ${
-                    selectedGenre === ''
-                      ? 'bg-primary-600 text-white'
+                    selectedGenre === 'all'
+                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20'
                       : 'bg-dark-100/50 hover:bg-dark-100 text-gray-300'
                   }`}
                 >
@@ -99,8 +111,8 @@ const Explore = () => {
                     key={genre.id}
                     onClick={() => handleGenreChange(genre.id)}
                     className={`px-4 py-2 rounded-full whitespace-nowrap transition-all duration-300 ${
-                      selectedGenre === genre.id
-                        ? 'bg-primary-600 text-white'
+                      selectedGenre === genre.id.toString()
+                        ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20'
                         : 'bg-dark-100/50 hover:bg-dark-100 text-gray-300'
                     }`}
                   >
@@ -113,8 +125,8 @@ const Explore = () => {
         </div>
         
         {movies.length > 0 ? (
-          <motion.div 
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6"
+          <motion.div
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
@@ -125,43 +137,27 @@ const Explore = () => {
               return (
                 <motion.div
                   key={movie.id}
-                  whileHover={{ scale: 1.05 }}
-                  className={`movie-card overflow-hidden rounded-lg shadow-lg ${
-                    isPremium ? 'ring-1 ring-yellow-500/30' : ''
-                  }`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="relative"
                 >
-                  <a href={`/player/${movie.id}`} className="block">
-                    <div className="relative aspect-[2/3]">
+                  <a
+                    href={`/player/${movie.id}`}
+                    className="block group"
+                  >
+                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden">
                       <img
-                        src={
-                          movie.poster_path
-                            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-                            : 'https://via.placeholder.com/500x750?text=No+Poster'
-                        }
+                        src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image'}
                         alt={movie.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
-                      
-                      {/* Premium overlay */}
-                      {isPremium ? (
-                        <div className="absolute inset-0 bg-gradient-to-t from-amber-800/70 via-dark-400/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <button className="btn btn-primary">Watch Trailer</button>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 bg-gradient-to-t from-dark-500/90 via-dark-400/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <button className="btn btn-primary">Watch Trailer</button>
-                        </div>
-                      )}
-                      
-                      {/* Premium badge */}
                       {isPremium && (
-                        <div className="absolute top-2 left-2 z-10">
-                          <PremiumBadge size="small" />
+                        <div className="absolute top-2 left-2">
+                          <PremiumBadge />
                         </div>
                       )}
                     </div>
-                    
                     <div className={`p-4 ${isPremium ? 'bg-gradient-to-r from-amber-900/80 to-dark-200' : 'bg-dark-200'}`}>
                       <h3 className="font-semibold text-white line-clamp-1">{movie.title}</h3>
                       <div className="flex items-center justify-between mt-2">

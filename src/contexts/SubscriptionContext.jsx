@@ -24,10 +24,28 @@ export const SubscriptionProvider = ({ children }) => {
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (!error && data) {
-        setSubscription(data);
+        // Check if subscription is still valid
+        const endDate = new Date(data.end_date);
+        const now = new Date();
+        
+        if (endDate > now) {
+          setSubscription(data);
+          // Store subscription in localStorage for persistence
+          localStorage.setItem('subscription', JSON.stringify(data));
+        } else {
+          // Subscription expired, clear it
+          setSubscription(null);
+          localStorage.removeItem('subscription');
+        }
+      } else {
+        // No subscription found, clear any stored data
+        setSubscription(null);
+        localStorage.removeItem('subscription');
       }
     } catch (error) {
       console.error('Error fetching subscription:', error);
@@ -36,8 +54,28 @@ export const SubscriptionProvider = ({ children }) => {
     }
   };
 
+  // Load subscription from localStorage on initial load
+  useEffect(() => {
+    const storedSubscription = localStorage.getItem('subscription');
+    if (storedSubscription) {
+      const parsedSubscription = JSON.parse(storedSubscription);
+      const endDate = new Date(parsedSubscription.end_date);
+      const now = new Date();
+      
+      if (endDate > now) {
+        setSubscription(parsedSubscription);
+      } else {
+        localStorage.removeItem('subscription');
+      }
+    }
+  }, []);
+
   const createSubscription = async (planData, paymentId) => {
     try {
+      // Calculate end date (2 days from now)
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 2);
+
       const { data, error } = await supabase
         .from('subscriptions')
         .insert([{
@@ -49,13 +87,15 @@ export const SubscriptionProvider = ({ children }) => {
           payment_id: paymentId,
           status: 'active',
           start_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+          end_date: endDate.toISOString()
         }])
         .select()
         .single();
 
       if (!error && data) {
         setSubscription(data);
+        // Store subscription in localStorage
+        localStorage.setItem('subscription', JSON.stringify(data));
         return data;
       }
     } catch (error) {
@@ -66,7 +106,11 @@ export const SubscriptionProvider = ({ children }) => {
 
   const isSubscriptionActive = () => {
     if (!subscription) return false;
-    return new Date(subscription.end_date) > new Date();
+    
+    const endDate = new Date(subscription.end_date);
+    const now = new Date();
+    
+    return endDate > now;
   };
 
   const value = {
