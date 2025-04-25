@@ -5,7 +5,7 @@ import YouTube from 'react-youtube';
 import Peer from 'simple-peer';
 import { motion } from 'framer-motion';
 
-const SERVER_URL = 'http://localhost:5000';
+const SERVER_URL = 'http://localhost:3000';
 
 export default function GroupRoom() {
   const { roomId } = useParams();

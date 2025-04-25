@@ -30,7 +30,6 @@ function App() {
             <Route path="/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/premium" element={<Premium />} />
-            <Route path="/group"      element={<GroupLanding />} />
             <Route path="/group/:roomId" element={<GroupRoom />} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/login" element={<Login />} />
