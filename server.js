@@ -2,13 +2,21 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import { Server } from 'socket.io';
+import { createClient } from '@supabase/supabase-js';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import dotenv from 'dotenv';
 
-const PORT = process.env.PORT || 5000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5174';
+// Load environment variables
+dotenv.config();
+
+const PORT = process.env.PORT || 3000;
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 const app = express();
 
 // allow your React app origin
 app.use(cors({ origin: CLIENT_ORIGIN }));
+app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -17,6 +25,22 @@ const io = new Server(server, {
 
 // in-memory map of rooms → host socket
 const rooms = {};
+
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
 
 io.on('connection', socket => {
   console.log('⏩ client connected:', socket.id);
@@ -72,6 +96,93 @@ io.on('connection', socket => {
   });
 });
 
+// Create order endpoint
+app.post('/api/create-order', async (req, res) => {
+  try {
+    const { amount, currency } = req.body;
+
+    const options = {
+      amount: amount,
+      currency: currency,
+      receipt: `order_${Date.now()}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// Verify payment endpoint
+app.post('/api/verify-payment', async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, planData } = req.body;
+
+    console.log('Received payment verification request:', {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature: razorpay_signature ? 'present' : 'missing',
+      planData: planData ? 'present' : 'missing'
+    });
+
+    const body = razorpay_order_id + '|' + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_SECRET)
+      .update(body.toString())
+      .digest('hex');
+
+    console.log('Signature verification:', {
+      expected: expectedSignature,
+      received: razorpay_signature,
+      match: expectedSignature === razorpay_signature
+    });
+
+    if (expectedSignature === razorpay_signature) {
+      // Create subscription in Supabase
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .insert([{
+          user_id: planData.user_id,
+          plan_id: planData.id,
+          plan_name: planData.name,
+          amount: planData.amount,
+          currency: planData.currency,
+          payment_id: razorpay_payment_id,
+          status: 'active',
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Payment verified and subscription created successfully');
+      res.json({ success: true, subscription: data });
+    } else {
+      console.error('Signature mismatch');
+      res.status(400).json({ 
+        error: 'Invalid signature',
+        details: {
+          expected: expectedSignature,
+          received: razorpay_signature
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error in verify-payment:', error);
+    res.status(500).json({ 
+      error: 'Failed to verify payment',
+      details: error.message
+    });
+  }
+});
+
 server.listen(PORT, () => {
-  console.log(`🚀 GroupWatch server listening on ${PORT}`);
+  console.log(`🚀 Server listening on port ${PORT}`);
 }); 

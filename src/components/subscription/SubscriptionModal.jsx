@@ -38,14 +38,19 @@ const SubscriptionModal = ({ isOpen, onClose, movieId }) => {
   ];
 
   const loadRazorpay = () => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) {
+        resolve(window.Razorpay);
+        return;
+      }
+
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => {
         resolve(window.Razorpay);
       };
       script.onerror = () => {
-        resolve(null);
+        reject(new Error('Failed to load Razorpay'));
       };
       document.body.appendChild(script);
     });
@@ -64,8 +69,24 @@ const SubscriptionModal = ({ isOpen, onClose, movieId }) => {
         throw new Error('Failed to load Razorpay');
       }
 
-      // Create order on your backend (in a real app, you'd call your backend API here)
-      // For demo purposes, we'll use the frontend directly with test keys
+      // Create order on your backend
+      const orderResponse = await fetch('http://localhost:3000/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: selectedPlan.amount,
+          currency: selectedPlan.currency,
+        }),
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const orderData = await orderResponse.json();
+
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: selectedPlan.amount,
@@ -73,14 +94,45 @@ const SubscriptionModal = ({ isOpen, onClose, movieId }) => {
         name: 'TrailerHub Premium',
         description: `${selectedPlan.name} Subscription`,
         image: 'https://via.placeholder.com/150',
-        order_id: `order_${Date.now()}_${user.id.substring(0, 8)}`, // In production, generate this on your backend
+        order_id: orderData.id,
         handler: async (response) => {
-          // Handle successful payment
           try {
-            await createSubscription(selectedPlan, response.razorpay_payment_id);
-            onClose();
+            console.log('Payment response received:', response);
+            
+            // Verify payment on your backend
+            const verifyResponse = await fetch('http://localhost:3000/api/verify-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                planData: {
+                  ...selectedPlan,
+                  user_id: user.id
+                }
+              }),
+            });
+
+            const verifyData = await verifyResponse.json();
+            console.log('Verification response:', verifyData);
+
+            if (!verifyResponse.ok) {
+              throw new Error(verifyData.error || 'Payment verification failed');
+            }
+
+            if (verifyData.success) {
+              await createSubscription(selectedPlan, response.razorpay_payment_id);
+              onClose();
+            } else {
+              throw new Error(verifyData.error || 'Payment verification failed');
+            }
           } catch (error) {
-            console.error('Error creating subscription:', error);
+            console.error('Error processing payment:', error);
+            console.error('Error details:', error.response?.data || error.message);
+            alert(`Payment verification failed: ${error.message}. Please contact support if the issue persists.`);
           } finally {
             setIsProcessing(false);
           }
@@ -92,12 +144,18 @@ const SubscriptionModal = ({ isOpen, onClose, movieId }) => {
         theme: {
           color: '#6366f1',
         },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+          },
+        },
       };
 
       const rzp = new Razorpay(options);
       rzp.open();
     } catch (error) {
       console.error('Payment error:', error);
+      alert('Failed to initialize payment. Please try again.');
       setIsProcessing(false);
     }
   };
