@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { IoPerson, IoBookmark, IoHeart, IoTime, IoLogOut, IoCog, IoHelpCircle } from 'react-icons/io5';
-import { FaCrown } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 
 const Profile = () => {
@@ -156,16 +155,6 @@ const Profile = () => {
           <div className="flex-1">
             <h1 className="text-3xl font-bold mb-1">{user.user_metadata?.name || 'User'}</h1>
             <p className="text-gray-400 mb-4">{user.email}</p>
-            
-            {!isPremium && (
-              <button
-                onClick={upgradeToPremium}
-                className="btn btn-accent flex items-center gap-2 px-4 py-2 text-sm"
-              >
-                <FaCrown />
-                Upgrade to Premium
-              </button>
-            )}
           </div>
         </div>
 
@@ -215,7 +204,7 @@ const Profile = () => {
                   }`}
                 >
                   <IoHeart />
-                  <span>Liked Movies</span>
+                  <span>Liked Trailers</span>
                   <span className="ml-auto bg-dark-100 text-xs px-2 py-1 rounded-full">
                     {likedMovies.length}
                   </span>
@@ -257,7 +246,7 @@ const Profile = () => {
                   {/* Stats Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div className="bg-gradient-to-br from-dark-500 to-dark-600 p-4 rounded-lg">
-                      <h3 className="text-gray-400 text-sm mb-2">Movies Watched</h3>
+                      <h3 className="text-gray-400 text-sm mb-2">Trailers Watched</h3>
                       <p className="text-3xl font-bold">{stats.totalWatched}</p>
                     </div>
                     <div className="bg-gradient-to-br from-dark-500 to-dark-600 p-4 rounded-lg">
@@ -379,7 +368,7 @@ const Profile = () => {
                         <IoTime size={24} />
                       </div>
                       <h3 className="text-xl font-semibold mb-2">No Watch History</h3>
-                      <p className="text-gray-400 mb-4">Movies you watch will appear here</p>
+                      <p className="text-gray-400 mb-4">Trailers you watch will appear here</p>
                       <button
                         onClick={() => navigate('/explore')}
                         className="btn btn-primary"

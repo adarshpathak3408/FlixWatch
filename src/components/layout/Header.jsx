@@ -57,7 +57,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="text-2xl font-bold title-gradient">
-            TrailerHub
+            FlixxWatch
           </Link>
           
           {/* Desktop Navigation */}
